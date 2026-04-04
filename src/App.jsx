@@ -553,79 +553,608 @@ function App() {
 
 }
 
-// Admin Panel Component
-function AdminPanel({ onClose }) {
-  const [results, setResults] = useState([]);
+// Helper: Get or initialize teachers list
+function getTeachers() {
+  try {
+    return JSON.parse(localStorage.getItem("teachers")) || [];
+  } catch {
+    return [];
+  }
+}
 
-  React.useEffect(() => {
-    try {
-      setResults(JSON.parse(localStorage.getItem("allQuizResults")) || []);
-    } catch {
-      setResults([]);
+function saveTeachers(teachers) {
+  localStorage.setItem("teachers", JSON.stringify(teachers));
+}
+
+// Admin Login Component
+function AdminLogin({ onAuthenticate }) {
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const ADMIN_PASSWORD = 'admin123'; // Master admin password
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (password === ADMIN_PASSWORD) {
+      onAuthenticate();
+      setPassword('');
+    } else {
+      setError('Invalid admin password');
+      setPassword('');
     }
-  }, []);
+  };
 
-  function exportAllCSV() {
-    if (!results.length) return alert("No results to export.");
-    const rows = [
-      ["Name", "Registration Number", "Center Number", "Score", "Date", "Q#", "Question", "Your Answer", "Correct/Expected Answer"]
-    ];
-    results.forEach(res => {
-      allQuestions.forEach((q, idx) => {
-        rows.push([
-          res.studentInfo?.name || '',
-          res.studentInfo?.regNo || '',
-          res.studentInfo?.centerNo || '',
-          res.score,
-          res.date,
-          idx + 1,
-          q.question,
-          res.answers[q.id] || '',
-          q.type === 'objective' ? q.correctAnswer : q.answer || ''
-        ]);
-      });
-    });
-    const csvContent = rows.map(r => r.map(x => '"' + String(x).replace(/"/g, '""') + '"').join(',')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `all_quiz_results.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  return (
+    <div className="main-wrapper">
+      <div className="glass-card" style={{ maxWidth: 400 }}>
+        <h2>Admin Login</h2>
+        <p style={{ color: '#666', marginBottom: 16, fontSize: 14 }}>Master Administrator Account</p>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            <label htmlFor="admin-pwd">Admin Password:</label>
+            <input
+              id="admin-pwd"
+              type="password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setError('');
+              }}
+              placeholder="Enter admin password"
+              required
+            />
+          </div>
+          {error && <div style={{ color: 'red', fontSize: 14 }}>{error}</div>}
+          <button type="submit" className="btn-next">Login as Admin</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// Teacher Login Component
+function TeacherLogin({ onAuthenticate, onBackToMenu }) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const teachers = getTeachers();
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const teacher = teachers.find(t => t.username === username && t.password === password);
+    if (teacher) {
+      onAuthenticate(teacher);
+      setUsername('');
+      setPassword('');
+    } else {
+      setError('Invalid username or password');
+      setUsername('');
+      setPassword('');
+    }
+  };
+
+  return (
+    <div className="main-wrapper">
+      <div className="glass-card" style={{ maxWidth: 400 }}>
+        <h2>Teacher Login</h2>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div>
+            <label htmlFor="teacher-user">Username:</label>
+            <input
+              id="teacher-user"
+              type="text"
+              value={username}
+              onChange={(e) => {
+                setUsername(e.target.value);
+                setError('');
+              }}
+              placeholder="Enter username"
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="teacher-pwd">Password:</label>
+            <input
+              id="teacher-pwd"
+              type="password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setError('');
+              }}
+              placeholder="Enter password"
+              required
+            />
+          </div>
+          {error && <div style={{ color: 'red', fontSize: 14 }}>{error}</div>}
+          <button type="submit" className="btn-next">Login</button>
+          <button type="button" onClick={onBackToMenu} className="btn-back">Back</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// Access Menu Component
+function AccessMenu({ onAdminClick, onTeacherClick, onStudentClick }) {
+  return (
+    <div className="main-wrapper">
+      <div className="glass-card" style={{ maxWidth: 500 }}>
+        <h2>Access Portal</h2>
+        <p style={{ color: '#666', marginBottom: 24 }}>Select your role:</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <button
+            onClick={onAdminClick}
+            style={{
+              padding: 16,
+              background: '#1565c0',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              fontSize: 16,
+              fontWeight: 600,
+              cursor: 'pointer',
+              textAlign: 'left'
+            }}
+          >
+            <div>👨‍💼 Admin</div>
+            <div style={{ fontSize: 12, fontWeight: 'normal', marginTop: 4 }}>Manage teachers and view all results</div>
+          </button>
+          <button
+            onClick={onTeacherClick}
+            style={{
+              padding: 16,
+              background: '#2e7d32',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              fontSize: 16,
+              fontWeight: 600,
+              cursor: 'pointer',
+              textAlign: 'left'
+            }}
+          >
+            <div>👨‍🏫 Teacher</div>
+            <div style={{ fontSize: 12, fontWeight: 'normal', marginTop: 4 }}>Score student responses and publish results</div>
+          </button>
+          <button
+            onClick={onStudentClick}
+            style={{
+              padding: 16,
+              background: '#e65100',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 6,
+              fontSize: 16,
+              fontWeight: 600,
+              cursor: 'pointer',
+              textAlign: 'left'
+            }}
+          >
+            <div>👨‍🎓 Student</div>
+            <div style={{ fontSize: 12, fontWeight: 'normal', marginTop: 4 }}>View your quiz results and feedback</div>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Student Results Portal
+function StudentResultsPortal({ onClose }) {
+  const [searchName, setSearchName] = useState('');
+  const [searchReg, setSearchReg] = useState('');
+  const [result, setResult] = useState(null);
+  const [notFound, setNotFound] = useState(false);
+  const allResults = JSON.parse(localStorage.getItem("allQuizResults")) || [];
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    const nameInput = searchName.trim();
+    const regInput = searchReg.trim();
+
+    if (!nameInput || !regInput) {
+      setNotFound(false);
+      return;
+    }
+
+    // Reload results from localStorage to get latest published status
+    const currentResults = JSON.parse(localStorage.getItem("allQuizResults")) || [];
+
+    // Debug: log what we're looking for
+    console.log('Searching for:', { name: nameInput, reg: regInput });
+    console.log('Available results:', currentResults.map(r => ({
+      name: r.studentInfo?.name,
+      reg: r.studentInfo?.regNo,
+      published: r.published
+    })));
+
+    const found = currentResults.find(
+      r => r.studentInfo?.name?.toLowerCase().trim() === nameInput.toLowerCase() &&
+        r.studentInfo?.regNo?.toLowerCase().trim() === regInput.toLowerCase() &&
+        r.published === true
+    );
+
+    if (found) {
+      console.log('Result found:', found);
+      setResult(found);
+      setNotFound(false);
+    } else {
+      console.log('No result found');
+      setResult(null);
+      setNotFound(true);
+    }
+  };
+
+  const calculateTheoryScore = (result) => {
+    const scores = result.theoryScores || {};
+    const theoriesCount = allQuestions.filter(q => q.type === 'theory').length;
+    const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
+    return theoriesCount > 0 ? Math.round((totalScore / (theoriesCount * 10)) * 100) : null;
+  };
+
+  const calculateTotalScore = (result) => {
+    const objectiveCorrect = result.score || 0;
+    const theoryScore = calculateTheoryScore(result) || 0;
+    const objectiveQuestions = allQuestions.filter(q => q.type === 'objective').length;
+    const objectiveWeight = 75;
+    const theoryWeight = 25;
+    return Math.round((objectiveCorrect / objectiveQuestions) * objectiveWeight + (theoryScore / 100) * theoryWeight);
+  };
+
+  const theoryQuestions = allQuestions.filter(q => q.type === 'theory');
+
+  if (result) {
+    return (
+      <div className="main-wrapper">
+        <div className="glass-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+            <h2>Your Quiz Results</h2>
+            <button onClick={onClose} className="btn-back">Back</button>
+          </div>
+
+          <div style={{ marginBottom: 24, padding: 16, background: '#f5f5f5', borderRadius: 8 }}>
+            <h3 style={{ margin: '0 0 12px 0' }}>Summary</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+              <div>
+                <div style={{ fontSize: 24, fontWeight: 'bold', color: '#2196f3' }}>
+                  {result.score}/{allQuestions.filter(q => q.type === 'objective').length}
+                </div>
+                <div style={{ fontSize: 12, color: '#666' }}>Objective Score</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 24, fontWeight: 'bold', color: '#ff9800' }}>
+                  {calculateTheoryScore(result)}%
+                </div>
+                <div style={{ fontSize: 12, color: '#666' }}>Theory Score</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 28, fontWeight: 'bold', color: '#4caf50' }}>
+                  {calculateTotalScore(result)}%
+                </div>
+                <div style={{ fontSize: 12, color: '#666' }}>Overall</div>
+              </div>
+            </div>
+          </div>
+
+          <h3>Theory Question Feedback</h3>
+          {theoryQuestions.map((q, idx) => (
+            <div key={q.id} style={{ marginBottom: 20, padding: 16, border: '1px solid #eee', borderRadius: 6 }}>
+              <div style={{ fontWeight: 600, marginBottom: 12 }}>
+                Q{idx + 1}: {q.question}
+              </div>
+              <div style={{ marginBottom: 12, padding: 12, background: '#f9f9f9', borderRadius: 4 }}>
+                <strong>Your Answer:</strong>
+                <p style={{ margin: '8px 0 0 0', fontStyle: 'italic' }}>
+                  {result.answers[q.id] || <span style={{ color: 'red' }}>No answer provided</span>}
+                </p>
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <strong>Expected Answer:</strong>
+                <p style={{ margin: '8px 0 0 0', fontStyle: 'italic' }}>{q.answer}</p>
+              </div>
+              <div style={{ marginBottom: 8 }}>
+                <strong>Your Score:</strong> <span style={{ color: '#4caf50', fontWeight: 'bold' }}>
+                  {result.theoryScores?.[q.id] ?? '–'}/10
+                </span>
+              </div>
+              {result.theoryComments?.[q.id] && (
+                <div style={{ marginTop: 12, padding: 12, background: '#e3f2fd', borderRadius: 4 }}>
+                  <strong>Teacher Feedback:</strong>
+                  <p style={{ margin: '8px 0 0 0' }}>{result.theoryComments[q.id]}</p>
+                </div>
+              )}
+            </div>
+          ))}
+
+          <button onClick={onClose} className="btn-back" style={{ marginTop: 24 }}>Back to Search</button>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="main-wrapper">
+      <div className="glass-card" style={{ maxWidth: 500 }}>
+        <h2>View Your Results</h2>
+        <form onSubmit={handleSearch} style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
+          <div>
+            <label htmlFor="student-name">Full Name:</label>
+            <input
+              id="student-name"
+              type="text"
+              value={searchName}
+              onChange={(e) => {
+                setSearchName(e.target.value);
+                setNotFound(false);
+              }}
+              placeholder="Enter your name"
+              required
+            />
+          </div>
+          <div>
+            <label htmlFor="student-reg">Registration Number:</label>
+            <input
+              id="student-reg"
+              type="text"
+              value={searchReg}
+              onChange={(e) => {
+                setSearchReg(e.target.value);
+                setNotFound(false);
+              }}
+              placeholder="Enter your registration number"
+              required
+            />
+          </div>
+          {notFound && (
+            <div style={{ color: 'red', fontSize: 14 }}>
+              Results not found. Your results may not be published yet.
+            </div>
+          )}
+          <button type="submit" className="btn-next">Search Results</button>
+          <button type="button" onClick={onClose} className="btn-back">Back</button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// Theory Question Scoring Modal
+function ScoringModal({ studentResult, onClose, onSave }) {
+  const [scores, setScores] = useState(() => {
+    const saved = studentResult.theoryScores || {};
+    return saved;
+  });
+  const [comments, setComments] = useState(() => {
+    const saved = studentResult.theoryComments || {};
+    return saved;
+  });
+
+  const theoryQuestions = allQuestions.filter(q => q.type === 'theory');
+
+  const handleScoreChange = (qId, score) => {
+    setScores(prev => ({ ...prev, [qId]: parseInt(score) || 0 }));
+  };
+
+  const handleCommentChange = (qId, comment) => {
+    setComments(prev => ({ ...prev, [qId]: comment }));
+  };
+
+  const handleSave = () => {
+    onSave({ theoryScores: scores, theoryComments: comments });
+    onClose();
+  };
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'rgba(0,0,0,0.5)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 2000
+    }}>
+      <div className="glass-card" style={{ maxWidth: 700, maxHeight: '90vh', overflow: 'auto' }}>
+        <h2>Score Theory Questions</h2>
+        <div style={{ padding: 12, background: '#e3f2fd', borderRadius: 6, marginBottom: 20, borderLeft: '4px solid #2196f3' }}>
+          <p style={{ margin: 0, fontSize: 13, color: '#0d47a1' }}>
+            <strong>📋 Workflow:</strong> After scoring, you must click <strong>"Publish"</strong> to make results visible to the student.
+          </p>
+        </div>
+        <p style={{ color: '#666', marginBottom: 20 }}>
+          <strong>Student:</strong> {studentResult.studentInfo.name} |
+          <strong style={{ marginLeft: 16 }}>Reg No:</strong> {studentResult.studentInfo.regNo}
+        </p>
+
+        {theoryQuestions.map((q, idx) => (
+          <div key={q.id} style={{ marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid #eee' }}>
+            <div style={{ marginBottom: 8 }}>
+              <strong>Q{idx + 1}: {q.question}</strong>
+            </div>
+            <div style={{ marginBottom: 8, padding: 8, background: '#f9f9f9', borderRadius: 4 }}>
+              <div>
+                <strong>Student Answer:</strong>
+                <p style={{ margin: '8px 0 0 0', fontStyle: 'italic' }}>
+                  {studentResult.answers[q.id] || <span style={{ color: 'red' }}>No answer</span>}
+                </p>
+              </div>
+              <div style={{ marginTop: 8 }}>
+                <strong>Expected Answer:</strong>
+                <p style={{ margin: '8px 0 0 0', fontStyle: 'italic' }}>{q.answer}</p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+              <div style={{ flex: '0 0 100px' }}>
+                <label htmlFor={`score-${q.id}`}>Score (0-10):</label>
+                <input
+                  id={`score-${q.id}`}
+                  type="number"
+                  min="0"
+                  max="10"
+                  value={scores[q.id] || 0}
+                  onChange={(e) => handleScoreChange(q.id, e.target.value)}
+                  style={{ width: '100%' }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor={`comment-${q.id}`}>Comments:</label>
+              <textarea
+                id={`comment-${q.id}`}
+                value={comments[q.id] || ''}
+                onChange={(e) => handleCommentChange(q.id, e.target.value)}
+                placeholder="Add feedback for the student..."
+                rows={3}
+                style={{ width: '100%', marginTop: 4 }}
+              />
+            </div>
+          </div>
+        ))}
+
+        <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
+          <button onClick={handleSave} className="btn-next">Save Scores</button>
+          <button onClick={onClose} className="btn-back">Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Admin Panel Component - Teacher Management
+function AdminManagementPanel({ onClose, currentTeacher }) {
+  const [teachers, setTeachers] = useState(getTeachers());
+  const [newUsername, setNewUsername] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const handleAddTeacher = (e) => {
+    e.preventDefault();
+    if (!newUsername.trim() || !newPassword.trim()) {
+      setError('Username and password are required');
+      return;
+    }
+
+    if (teachers.find(t => t.username === newUsername)) {
+      setError('Username already exists');
+      return;
+    }
+
+    const newTeacher = {
+      id: Date.now().toString(),
+      username: newUsername,
+      password: newPassword,
+      createdAt: new Date().toISOString()
+    };
+
+    const updated = [...teachers, newTeacher];
+    setTeachers(updated);
+    saveTeachers(updated);
+    setSuccess(`Teacher "${newUsername}" created successfully`);
+    setNewUsername('');
+    setNewPassword('');
+    setError('');
+  };
+
+  const handleDeleteTeacher = (id) => {
+    if (window.confirm('Delete this teacher? This cannot be undone.')) {
+      const updated = teachers.filter(t => t.id !== id);
+      setTeachers(updated);
+      saveTeachers(updated);
+      setSuccess('Teacher deleted');
+    }
+  };
+
+  return (
+    <div className="main-wrapper">
       <div className="glass-card">
-        <h2>Admin Panel - All Quiz Results</h2>
-        <button onClick={onClose} className="btn-next" style={{ float: 'right', marginLeft: 8 }}>Close</button>
-        <button onClick={exportAllCSV} className="btn-next" style={{ float: 'right' }}>Export All as CSV</button>
-        <div style={{ clear: 'both', marginBottom: 16 }}></div>
-        {results.length === 0 ? (
-          <div>No results found.</div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <h2>Admin Panel - Manage Teachers</h2>
+          <button onClick={onClose} className="btn-back">Exit</button>
+        </div>
+
+        {/* Add New Teacher Form */}
+        <div style={{ marginBottom: 32, padding: 20, background: '#f5f5f5', borderRadius: 8 }}>
+          <h3 style={{ marginTop: 0 }}>Add New Teacher</h3>
+          <form onSubmit={handleAddTeacher} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12, alignItems: 'flex-end' }}>
+            <div>
+              <label htmlFor="new-username">Username:</label>
+              <input
+                id="new-username"
+                type="text"
+                value={newUsername}
+                onChange={(e) => {
+                  setNewUsername(e.target.value);
+                  setError('');
+                }}
+                placeholder="e.g., teacher1"
+                required
+              />
+            </div>
+            <div>
+              <label htmlFor="new-password">Password:</label>
+              <input
+                id="new-password"
+                type="text"
+                value={newPassword}
+                onChange={(e) => {
+                  setNewPassword(e.target.value);
+                  setError('');
+                }}
+                placeholder="e.g., secure123"
+                required
+              />
+            </div>
+            <button type="submit" className="btn-next">Add Teacher</button>
+          </form>
+          {error && <div style={{ color: 'red', marginTop: 12 }}>{error}</div>}
+          {success && <div style={{ color: 'green', marginTop: 12 }}>{success}</div>}
+        </div>
+
+        {/* Teachers List */}
+        <h3>Active Teachers ({teachers.length})</h3>
+        {teachers.length === 0 ? (
+          <div style={{ padding: 20, textAlign: 'center', color: '#999' }}>No teachers yet</div>
         ) : (
           <div style={{ maxHeight: 400, overflow: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
+              <thead style={{ background: '#f5f5f5', position: 'sticky', top: 0 }}>
                 <tr>
-                  <th>Name</th>
-                  <th>Reg No</th>
-                  <th>Center No</th>
-                  <th>Score</th>
-                  <th>Date</th>
+                  <th style={{ padding: 12, textAlign: 'left', borderBottom: '2px solid #ddd' }}>Username</th>
+                  <th style={{ padding: 12, textAlign: 'left', borderBottom: '2px solid #ddd' }}>Password</th>
+                  <th style={{ padding: 12, textAlign: 'left', borderBottom: '2px solid #ddd' }}>Created</th>
+                  <th style={{ padding: 12, textAlign: 'center', borderBottom: '2px solid #ddd' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
-                {results.map((res, i) => (
-                  <tr key={i}>
-                    <td>{res.studentInfo?.name}</td>
-                    <td>{res.studentInfo?.regNo}</td>
-                    <td>{res.studentInfo?.centerNo}</td>
-                    <td>{res.score}</td>
-                    <td>{res.date && new Date(res.date).toLocaleString()}</td>
+                {teachers.map(t => (
+                  <tr key={t.id} style={{ borderBottom: '1px solid #eee' }}>
+                    <td style={{ padding: 12, fontWeight: 600 }}>{t.username}</td>
+                    <td style={{ padding: 12, fontFamily: 'monospace', fontSize: 12 }}>••••••••</td>
+                    <td style={{ padding: 12, fontSize: 12 }}>
+                      {new Date(t.createdAt).toLocaleDateString()}
+                    </td>
+                    <td style={{ padding: 12, textAlign: 'center' }}>
+                      <button
+                        onClick={() => handleDeleteTeacher(t.id)}
+                        style={{
+                          padding: '4px 8px',
+                          background: '#ff5252',
+                          color: '#fff',
+                          border: 'none',
+                          borderRadius: 4,
+                          cursor: 'pointer',
+                          fontSize: 12
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -637,12 +1166,373 @@ function AdminPanel({ onClose }) {
   );
 }
 
+// Admin Panel Component
+function AdminPanel({ onClose, currentTeacher }) {
+  const [results, setResults] = useState([]);
+  const [selectedResult, setSelectedResult] = useState(null);
+  const [filter, setFilter] = useState('all');
+  const [managingTeachers, setManagingTeachers] = useState(false);
+
+  React.useEffect(() => {
+    loadResults();
+  }, []);
+
+  const loadResults = () => {
+    try {
+      setResults(JSON.parse(localStorage.getItem("allQuizResults")) || []);
+    } catch {
+      setResults([]);
+    }
+  };
+
+  const saveTheoryScores = (resultIndex, scores) => {
+    const updated = [...results];
+    updated[resultIndex] = {
+      ...updated[resultIndex],
+      theoryScores: scores.theoryScores,
+      theoryComments: scores.theoryComments
+    };
+    setResults(updated);
+    localStorage.setItem("allQuizResults", JSON.stringify(updated));
+    setSelectedResult(null);
+  };
+
+  const publishResults = (resultIndex) => {
+    const updated = [...results];
+    const studentName = updated[resultIndex].studentInfo.name;
+    updated[resultIndex] = {
+      ...updated[resultIndex],
+      published: true,
+      publishedAt: new Date().toISOString(),
+      publishedBy: currentTeacher?.username || 'system'
+    };
+    setResults(updated);
+    localStorage.setItem("allQuizResults", JSON.stringify(updated));
+
+    // Show confirmation
+    alert(
+      `✓ Results Published!\n\n` +
+      `Student: ${studentName}\n` +
+      `Status: Pending → Published\n\n` +
+      `The student can now view their results and feedback.`
+    );
+  };
+
+  const calculateTheoryScore = (result) => {
+    const scores = result.theoryScores || {};
+    const theoriesCount = allQuestions.filter(q => q.type === 'theory').length;
+    const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
+    return theoriesCount > 0 ? Math.round((totalScore / (theoriesCount * 10)) * 100) : null;
+  };
+
+  const calculateTotalScore = (result) => {
+    const objectiveCorrect = result.score || 0;
+    const theoryScore = calculateTheoryScore(result) || 0;
+    const objectiveQuestions = allQuestions.filter(q => q.type === 'objective').length;
+    return Math.round((objectiveCorrect / objectiveQuestions) * 75 + (theoryScore / 100) * 25);
+  };
+
+  const isTheoryScoringPending = (result) => {
+    const theoryQuestions = allQuestions.filter(q => q.type === 'theory');
+    const scores = result.theoryScores || {};
+    return theoryQuestions.length > Object.keys(scores).length;
+  };
+
+  const filteredResults = results.filter(r => {
+    if (filter === 'theory-pending') return isTheoryScoringPending(r);
+    if (filter === 'theory-scored') return !isTheoryScoringPending(r);
+    if (filter === 'published') return r.published;
+    return true;
+  });
+
+  if (managingTeachers) {
+    return <AdminManagementPanel onClose={() => setManagingTeachers(false)} />;
+  }
+
+  return (
+    <div className="main-wrapper">
+      <div className="glass-card">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <h2>{currentTeacher ? 'Teacher Dashboard' : 'Admin Dashboard'}</h2>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {!currentTeacher && (
+              <button
+                onClick={() => setManagingTeachers(true)}
+                className="btn-next"
+                style={{ padding: '8px 16px' }}
+              >
+                Manage Teachers
+              </button>
+            )}
+            <button onClick={onClose} className="btn-back">Exit</button>
+          </div>
+        </div>
+
+        {/* Stats Section */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+          <div style={{ padding: 16, background: '#e8f5e9', borderRadius: 8, textAlign: 'center' }}>
+            <div style={{ fontSize: 32, fontWeight: 'bold', color: '#2e7d32' }}>{results.length}</div>
+            <div style={{ fontSize: 12, color: '#1b5e20', marginTop: 4 }}>Total Submissions</div>
+          </div>
+          <div style={{ padding: 16, background: '#fff3e0', borderRadius: 8, textAlign: 'center' }}>
+            <div style={{ fontSize: 32, fontWeight: 'bold', color: '#e65100' }}>
+              {results.filter(r => isTheoryScoringPending(r)).length}
+            </div>
+            <div style={{ fontSize: 12, color: '#bf360c', marginTop: 4 }}>Pending Scoring</div>
+          </div>
+          <div style={{ padding: 16, background: '#e3f2fd', borderRadius: 8, textAlign: 'center' }}>
+            <div style={{ fontSize: 32, fontWeight: 'bold', color: '#1565c0' }}>
+              {results.filter(r => !isTheoryScoringPending(r) && !r.published).length}
+            </div>
+            <div style={{ fontSize: 12, color: '#0d47a1', marginTop: 4 }}>Ready to Publish</div>
+          </div>
+          <div style={{ padding: 16, background: '#c8e6c9', borderRadius: 8, textAlign: 'center' }}>
+            <div style={{ fontSize: 32, fontWeight: 'bold', color: '#1b5e20' }}>
+              {results.filter(r => r.published).length}
+            </div>
+            <div style={{ fontSize: 12, color: '#1b5e20', marginTop: 4 }}>Published</div>
+          </div>
+        </div>
+
+        {/* Filter Options */}
+        <div style={{ marginBottom: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button
+            onClick={() => setFilter('all')}
+            style={{
+              padding: '8px 16px',
+              background: filter === 'all' ? '#4caf50' : '#f5f5f5',
+              color: filter === 'all' ? '#fff' : '#333',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontSize: 12
+            }}
+          >
+            All ({results.length})
+          </button>
+          <button
+            onClick={() => setFilter('theory-pending')}
+            style={{
+              padding: '8px 16px',
+              background: filter === 'theory-pending' ? '#ff9800' : '#f5f5f5',
+              color: filter === 'theory-pending' ? '#fff' : '#333',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontSize: 12
+            }}
+          >
+            Pending ({results.filter(r => isTheoryScoringPending(r)).length})
+          </button>
+          <button
+            onClick={() => setFilter('theory-scored')}
+            style={{
+              padding: '8px 16px',
+              background: filter === 'theory-scored' ? '#2196f3' : '#f5f5f5',
+              color: filter === 'theory-scored' ? '#fff' : '#333',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontSize: 12
+            }}
+          >
+            Scored ({results.filter(r => !isTheoryScoringPending(r)).length})
+          </button>
+          <button
+            onClick={() => setFilter('published')}
+            style={{
+              padding: '8px 16px',
+              background: filter === 'published' ? '#4caf50' : '#f5f5f5',
+              color: filter === 'published' ? '#fff' : '#333',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontSize: 12
+            }}
+          >
+            Published ({results.filter(r => r.published).length})
+          </button>
+        </div>
+
+        {/* Results Table */}
+        <div style={{ maxHeight: 500, overflow: 'auto' }}>
+          {filteredResults.length === 0 ? (
+            <div style={{ padding: 24, textAlign: 'center', color: '#999' }}>No results found.</div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead style={{ background: '#f5f5f5', position: 'sticky', top: 0 }}>
+                <tr>
+                  <th style={{ padding: 12, textAlign: 'left', borderBottom: '2px solid #ddd' }}>Student</th>
+                  <th style={{ padding: 12, textAlign: 'left', borderBottom: '2px solid #ddd' }}>Reg No</th>
+                  <th style={{ padding: 12, textAlign: 'center', borderBottom: '2px solid #ddd' }}>Objective</th>
+                  <th style={{ padding: 12, textAlign: 'center', borderBottom: '2px solid #ddd' }}>Theory</th>
+                  <th style={{ padding: 12, textAlign: 'center', borderBottom: '2px solid #ddd' }}>Overall</th>
+                  <th style={{ padding: 12, textAlign: 'center', borderBottom: '2px solid #ddd' }}>Status</th>
+                  <th style={{ padding: 12, textAlign: 'center', borderBottom: '2px solid #ddd' }}>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredResults.map((res, idx) => {
+                  const theoryScore = calculateTheoryScore(res);
+                  const isPending = isTheoryScoringPending(res);
+                  const totalScore = calculateTotalScore(res);
+                  const actualIndex = results.indexOf(res);
+                  return (
+                    <tr key={actualIndex} style={{ borderBottom: '1px solid #eee' }}>
+                      <td style={{ padding: 12 }}>{res.studentInfo?.name}</td>
+                      <td style={{ padding: 12 }}>{res.studentInfo?.regNo}</td>
+                      <td style={{ padding: 12, textAlign: 'center' }}>
+                        {res.score}/{allQuestions.filter(q => q.type === 'objective').length}
+                      </td>
+                      <td style={{ padding: 12, textAlign: 'center' }}>
+                        {theoryScore !== null ? `${theoryScore}%` : '–'}
+                      </td>
+                      <td style={{ padding: 12, textAlign: 'center', fontWeight: 'bold' }}>
+                        {totalScore}%
+                      </td>
+                      <td style={{ padding: 12, textAlign: 'center' }}>
+                        <span style={{
+                          display: 'inline-block',
+                          padding: '4px 8px',
+                          borderRadius: 4,
+                          fontSize: 11,
+                          fontWeight: 600,
+                          background: res.published ? '#c8e6c9' : isPending ? '#fff3e0' : '#e3f2fd',
+                          color: res.published ? '#1b5e20' : isPending ? '#e65100' : '#0d47a1'
+                        }}>
+                          {res.published ? '✓ Published' : isPending ? 'Pending' : 'Scored'}
+                        </span>
+                      </td>
+                      <td style={{ padding: 12, textAlign: 'center' }}>
+                        <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
+                          {!isPending && !res.published && (
+                            <button
+                              onClick={() => publishResults(actualIndex)}
+                              style={{
+                                padding: '4px 8px',
+                                background: '#4caf50',
+                                color: '#fff',
+                                border: 'none',
+                                borderRadius: 4,
+                                cursor: 'pointer',
+                                fontSize: 11,
+                                fontWeight: 600
+                              }}
+                            >
+                              Publish
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setSelectedResult(actualIndex)}
+                            disabled={res.published}
+                            className="btn-next"
+                            style={{
+                              padding: '4px 8px',
+                              fontSize: 11,
+                              opacity: res.published ? 0.5 : 1,
+                              cursor: res.published ? 'not-allowed' : 'pointer'
+                            }}
+                            title={res.published ? 'Results are published and locked' : 'Score theory questions'}
+                          >
+                            {res.published ? 'Locked' : 'Score'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )
+          }
+        </div >
+      </div >
+
+      {/* Scoring Modal */}
+      {
+        selectedResult !== null && (
+          <ScoringModal
+            studentResult={results[selectedResult]}
+            onClose={() => setSelectedResult(null)}
+            onSave={(scores) => saveTheoryScores(selectedResult, scores)}
+          />
+        )
+      }
+    </div >
+  );
+}
+
 function AppWithAdmin() {
-  const [showAdmin, setShowAdmin] = useState(false);
+  const [view, setView] = useState('quiz'); // 'quiz', 'menu', 'admin-login', 'admin-panel', 'teacher-login', 'teacher-panel', 'student-results'
+  const [currentTeacher, setCurrentTeacher] = useState(null);
+
+  const showMenu = () => {
+    setView('menu');
+    setCurrentTeacher(null);
+  };
+
+  if (view === 'menu') {
+    return (
+      <AccessMenu
+        onAdminClick={() => setView('admin-login')}
+        onTeacherClick={() => setView('teacher-login')}
+        onStudentClick={() => setView('student-results')}
+      />
+    );
+  }
+
+  if (view === 'admin-login') {
+    return (
+      <AdminLogin
+        onAuthenticate={() => setView('admin-panel')}
+      />
+    );
+  }
+
+  if (view === 'admin-panel') {
+    return (
+      <AdminPanel
+        onClose={showMenu}
+        currentTeacher={null}
+      />
+    );
+  }
+
+  if (view === 'teacher-login') {
+    return (
+      <TeacherLogin
+        onAuthenticate={(teacher) => {
+          setCurrentTeacher(teacher);
+          setView('teacher-panel');
+        }}
+        onBackToMenu={() => setView('menu')}
+      />
+    );
+  }
+
+  if (view === 'teacher-panel') {
+    return (
+      <AdminPanel
+        onClose={showMenu}
+        currentTeacher={currentTeacher}
+      />
+    );
+  }
+
+  if (view === 'student-results') {
+    return <StudentResultsPortal onClose={showMenu} />;
+  }
+
   return (
     <>
-      <button onClick={() => setShowAdmin(true)} style={{ position: 'fixed', top: 12, right: 12, zIndex: 1000 }} className="btn-next">Admin Panel</button>
-      {showAdmin ? <AdminPanel onClose={() => setShowAdmin(false)} /> : <App />}
+      <button
+        onClick={() => setView('menu')}
+        style={{ position: 'fixed', top: 12, right: 12, zIndex: 1000 }}
+        className="btn-next"
+      >
+        Access Portal
+      </button>
+      <App />
     </>
   );
 }
