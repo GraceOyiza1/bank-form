@@ -330,19 +330,19 @@ function App() {
       <div className="main-wrapper">
         <div className="glass-card">
           <h2>Enter Student Information</h2>
-          <form onSubmit={handleInfoSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <label>
-              Name:
+          <form onSubmit={handleInfoSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            <div className="student-info-row">
+              <label>Name:</label>
               <input name="name" value={studentInfo.name} onChange={handleInfoChange} required />
-            </label>
-            <label>
-              Registration Number:
+            </div>
+            <div className="student-info-row">
+              <label>Registration Number:</label>
               <input name="regNo" value={studentInfo.regNo} onChange={handleInfoChange} required />
-            </label>
-            <label>
-              Center Number:
+            </div>
+            <div className="student-info-row">
+              <label>Center Number:</label>
               <input name="centerNo" value={studentInfo.centerNo} onChange={handleInfoChange} required />
-            </label>
+            </div>
             <button type="submit" className="btn-next">Start Quiz</button>
           </form>
         </div>
@@ -675,10 +675,27 @@ function TeacherLogin({ onAuthenticate, onBackToMenu }) {
 }
 
 // Access Menu Component
-function AccessMenu({ onAdminClick, onTeacherClick, onStudentClick }) {
+function AccessMenu({ onAdminClick, onTeacherClick, onStudentClick, onBack }) {
   return (
     <div className="main-wrapper">
       <div className="glass-card" style={{ maxWidth: 500 }}>
+        {onBack && (
+          <button 
+            onClick={onBack} 
+            style={{ 
+              background: 'transparent', 
+              border: 'none', 
+              color: '#71717a', 
+              cursor: 'pointer', 
+              fontSize: '14px',
+              padding: 0,
+              marginBottom: '16px',
+              display: 'inline-block'
+            }}
+          >
+            ← Back to Landing Page
+          </button>
+        )}
         <h2>Access Portal</h2>
         <p style={{ color: '#666', marginBottom: 24 }}>Select your role:</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -686,9 +703,10 @@ function AccessMenu({ onAdminClick, onTeacherClick, onStudentClick }) {
             onClick={onAdminClick}
             style={{
               padding: 16,
-              background: '#1565c0',
+              background: 'rgba(255, 255, 255, 0.05)',
               color: '#fff',
               border: 'none',
+              borderLeft: '4px solid #2563eb',
               borderRadius: 6,
               fontSize: 16,
               fontWeight: 600,
@@ -696,16 +714,17 @@ function AccessMenu({ onAdminClick, onTeacherClick, onStudentClick }) {
               textAlign: 'left'
             }}
           >
-            <div>👨‍💼 Admin</div>
-            <div style={{ fontSize: 12, fontWeight: 'normal', marginTop: 4 }}>Manage teachers and view all results</div>
+            <div style={{ color: '#2563eb' }}>Admin</div>
+            <div style={{ fontSize: 12, fontWeight: 'normal', marginTop: 4, color: '#a1a1aa' }}>Manage teachers and view all results</div>
           </button>
           <button
             onClick={onTeacherClick}
             style={{
               padding: 16,
-              background: '#2e7d32',
+              background: 'rgba(255, 255, 255, 0.05)',
               color: '#fff',
               border: 'none',
+              borderLeft: '4px solid #059669',
               borderRadius: 6,
               fontSize: 16,
               fontWeight: 600,
@@ -713,16 +732,17 @@ function AccessMenu({ onAdminClick, onTeacherClick, onStudentClick }) {
               textAlign: 'left'
             }}
           >
-            <div>👨‍🏫 Teacher</div>
-            <div style={{ fontSize: 12, fontWeight: 'normal', marginTop: 4 }}>Score student responses and publish results</div>
+            <div style={{ color: '#059669' }}>Teacher</div>
+            <div style={{ fontSize: 12, fontWeight: 'normal', marginTop: 4, color: '#a1a1aa' }}>Score student responses and publish results</div>
           </button>
           <button
             onClick={onStudentClick}
             style={{
               padding: 16,
-              background: '#e65100',
+              background: 'rgba(255, 255, 255, 0.05)',
               color: '#fff',
               border: 'none',
+              borderLeft: '4px solid #f97316',
               borderRadius: 6,
               fontSize: 16,
               fontWeight: 600,
@@ -730,8 +750,8 @@ function AccessMenu({ onAdminClick, onTeacherClick, onStudentClick }) {
               textAlign: 'left'
             }}
           >
-            <div>👨‍🎓 Student</div>
-            <div style={{ fontSize: 12, fontWeight: 'normal', marginTop: 4 }}>View your quiz results and feedback</div>
+            <div style={{ color: '#f97316' }}>Student</div>
+            <div style={{ fontSize: 12, fontWeight: 'normal', marginTop: 4, color: '#a1a1aa' }}>View your quiz results and feedback</div>
           </button>
         </div>
       </div>
@@ -769,9 +789,9 @@ function StudentResultsPortal({ onClose }) {
     })));
 
     const found = currentResults.find(
-      r => r.studentInfo?.name?.toLowerCase().trim() === nameInput.toLowerCase() &&
-        r.studentInfo?.regNo?.toLowerCase().trim() === regInput.toLowerCase() &&
-        r.published === true
+      r => r.studentInfo?.name?.trim().toLowerCase() === nameInput.toLowerCase() &&
+        r.studentInfo?.regNo?.trim().toLowerCase() === regInput.toLowerCase() &&
+        (r.isApproved === true || r.published === true)
     );
 
     if (found) {
@@ -876,8 +896,8 @@ function StudentResultsPortal({ onClose }) {
     <div className="main-wrapper">
       <div className="glass-card" style={{ maxWidth: 500 }}>
         <h2>View Your Results</h2>
-        <form onSubmit={handleSearch} style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 24 }}>
-          <div>
+        <form onSubmit={handleSearch} style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginBottom: 24 }}>
+          <div className="student-info-row">
             <label htmlFor="student-name">Full Name:</label>
             <input
               id="student-name"
@@ -891,7 +911,7 @@ function StudentResultsPortal({ onClose }) {
               required
             />
           </div>
-          <div>
+          <div className="student-info-row">
             <label htmlFor="student-reg">Registration Number:</label>
             <input
               id="student-reg"
@@ -1203,6 +1223,7 @@ function AdminPanel({ onClose, currentTeacher }) {
     updated[resultIndex] = {
       ...updated[resultIndex],
       published: true,
+      isApproved: true,
       publishedAt: new Date().toISOString(),
       publishedBy: currentTeacher?.username || 'system'
     };
@@ -1477,6 +1498,7 @@ function AppWithAdmin() {
         onAdminClick={() => setView('admin-login')}
         onTeacherClick={() => setView('teacher-login')}
         onStudentClick={() => setView('student-results')}
+        onBack={() => setView('quiz')}
       />
     );
   }

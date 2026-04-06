@@ -186,3 +186,18 @@ input.incomplete {
 input.complete {
   border-bottom: 2px solid var(--neon-green);
 }
+
+/* Responsive Student Info Grid */
+.student-info-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+@media (min-width: 768px) {
+  .student-info-row {
+    grid-template-columns: 160px 1fr;
+    align-items: center;
+    gap: 16px;
+  }
+}
