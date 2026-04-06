@@ -138,7 +138,7 @@ const TOTAL_GOAL = 105;
 const TOTAL_STEPS = 11;
 
 
-function App() {
+function App({ onQuizStart }) {
   // All state hooks must come first
   const [randomizedQuestions, setRandomizedQuestions] = useState([]);
   const [answers, setAnswers] = useState({});
@@ -273,6 +273,7 @@ function App() {
     });
     setRandomizedQuestions(randomized);
     setInfoSubmitted(true);
+    if (onQuizStart) onQuizStart();
   };
 
   const handleSubmit = () => {
@@ -399,8 +400,8 @@ function App() {
   // Review screen
   if (reviewMode) {
     return (
-      <div className="main-wrapper" style={{ display: 'flex', flexDirection: 'row' }}>
-        <nav style={{ minWidth: 120, background: '#f5f5f5', padding: 16, borderRadius: 8, marginRight: 24, height: 'fit-content', alignSelf: 'flex-start', position: 'sticky', top: 24 }} aria-label="Section Navigation">
+      <div className="main-wrapper quiz-layout">
+        <nav className="sidebar-nav" aria-label="Section Navigation">
           <div style={{ fontWeight: 600, marginBottom: 12 }}>Sections</div>
           {[...Array(TOTAL_STEPS)].map((_, i) => (
             <button
@@ -423,9 +424,9 @@ function App() {
             </button>
           ))}
         </nav>
-        <div style={{ flex: 1 }}>
+        <div className="quiz-main-area">
           <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 8 }}>
-            <span style={{ fontWeight: 600, fontSize: 18, color: timeLeft < 300 ? 'red' : '#333' }} aria-live="polite">Time Left: {formatTime(timeLeft)}</span>
+            <span style={{ fontWeight: 600, fontSize: 18, color: timeLeft < 300 ? '#ff4757' : '#fff' }} aria-live="polite">Time Left: {formatTime(timeLeft)}</span>
           </div>
           <div className="glass-card">
             <h2>Review Your Answers</h2>
@@ -457,9 +458,9 @@ function App() {
 
   // Main quiz UI
   return (
-    <div className="main-wrapper" style={{ display: 'flex', flexDirection: 'row' }}>
+    <div className="main-wrapper quiz-layout">
       {/* Sidebar navigation */}
-      <nav style={{ minWidth: 120, background: '#f5f5f5', padding: 16, borderRadius: 8, marginRight: 24, height: 'fit-content', alignSelf: 'flex-start', position: 'sticky', top: 24 }} aria-label="Section Navigation">
+      <nav className="sidebar-nav" aria-label="Section Navigation">
         <div style={{ fontWeight: 600, marginBottom: 12 }}>Sections</div>
         {[...Array(TOTAL_STEPS)].map((_, i) => (
           <button
@@ -483,13 +484,13 @@ function App() {
           </button>
         ))}
       </nav>
-      <div style={{ flex: 1 }}>
-        {/* Timer at the top */}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 8 }}>
-          <span style={{ fontWeight: 600, fontSize: 18, color: timeLeft < 300 ? 'red' : '#333' }} aria-live="polite">Time Left: {formatTime(timeLeft)}</span>
-        </div>
+      <div className="quiz-main-area">
         <div className="progress-container">
-          <div className="label-row">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>Quiz Progress</span>
+            <span style={{ fontWeight: 600, fontSize: 18, color: timeLeft < 300 ? '#ff4757' : '#fff' }} aria-live="polite">Time Left: {formatTime(timeLeft)}</span>
+          </div>
+          <div className="label-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 13, color: '#94a3b8' }}>
             <span>{totalFilled} / {TOTAL_GOAL} Questions Answered</span>
             <span>{Math.round((totalFilled / TOTAL_GOAL) * 100)}% Complete</span>
           </div>
@@ -509,7 +510,7 @@ function App() {
                 <label>{idx + 1}. {q.question}</label>
                 {q.type === 'objective' ? (
                   q.options.map(option => (
-                    <label key={option} style={{ display: 'block', marginLeft: 10 }}>
+                    <label key={option} className="radio-option">
                       <input
                         type="radio"
                         name={`question-${q.id}`}
@@ -1486,6 +1487,7 @@ function AdminPanel({ onClose, currentTeacher }) {
 function AppWithAdmin() {
   const [view, setView] = useState('quiz'); // 'quiz', 'menu', 'admin-login', 'admin-panel', 'teacher-login', 'teacher-panel', 'student-results'
   const [currentTeacher, setCurrentTeacher] = useState(null);
+  const [quizActive, setQuizActive] = useState(false);
 
   const showMenu = () => {
     setView('menu');
@@ -1547,14 +1549,16 @@ function AppWithAdmin() {
 
   return (
     <>
-      <button
-        onClick={() => setView('menu')}
-        style={{ position: 'fixed', top: 12, right: 12, zIndex: 1000 }}
-        className="btn-next"
-      >
-        Access Portal
-      </button>
-      <App />
+      {!quizActive && (
+        <button
+          onClick={() => setView('menu')}
+          style={{ position: 'fixed', top: 12, right: 12, zIndex: 1000 }}
+          className="btn-next"
+        >
+          Access Portal
+        </button>
+      )}
+      <App onQuizStart={() => setQuizActive(true)} />
     </>
   );
 }
