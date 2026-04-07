@@ -145,10 +145,12 @@ function App({ onQuizStart }) {
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0);
   const [currentStep, setCurrentStep] = useState(1);
-  const [studentInfo, setStudentInfo] = useState({ name: '', regNo: '', centerNo: '' });
+  const [studentInfo, setStudentInfo] = useState({ firstName: '', secondName: '', regNo: '', centerNo: '', hasSigned: false });
   const [infoSubmitted, setInfoSubmitted] = useState(false);
   const [timeLeft, setTimeLeft] = useState(3600); // 1 hour = 3600 seconds
   const [reviewMode, setReviewMode] = useState(false);
+  const [theoryPageIndex, setTheoryPageIndex] = useState(0);
+  const loginSigCanvas = useRef();
   const sigCanvas = useRef();
   const timerRef = useRef();
 
@@ -159,7 +161,7 @@ function App({ onQuizStart }) {
     const rows = [
       ['Name', 'Registration Number', 'Center Number', 'Score', 'Question', 'Your Answer', 'Correct/Expected Answer'],
       ...questions.map((q, idx) => [
-        studentInfo.name,
+        `${studentInfo.firstName} ${studentInfo.secondName}`,
         studentInfo.regNo,
         studentInfo.centerNo,
         score,
@@ -248,10 +250,26 @@ function App({ onQuizStart }) {
 
   const handleInfoSubmit = (e) => {
     e.preventDefault();
-    if (!studentInfo.name.trim() || !studentInfo.regNo.trim() || !studentInfo.centerNo.trim()) {
+    if (!studentInfo.firstName.trim() || !studentInfo.secondName.trim() || !studentInfo.regNo.trim() || !studentInfo.centerNo.trim()) {
       alert('Please fill in all student information fields.');
       return;
     }
+    
+    // RegNo Validation
+    const regNum = parseInt(studentInfo.regNo, 10);
+    if (isNaN(regNum) || regNum < 1 || regNum > 50) {
+      alert('Registration Number must be between 001 and 050.');
+      return;
+    }
+    
+    // Signature Validation
+    if (!loginSigCanvas.current || loginSigCanvas.current.isEmpty()) {
+      alert('Please sign before starting the quiz.');
+      return;
+    }
+    
+    const signatureData = loginSigCanvas.current.toDataURL();
+    setStudentInfo(prev => ({ ...prev, loginSignature: signatureData }));
     // Randomize questions and options per section
     const grouped = {};
     allQuestions.forEach(q => {
@@ -333,18 +351,34 @@ function App({ onQuizStart }) {
           <h2>Enter Student Information</h2>
           <form onSubmit={handleInfoSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <div className="student-info-row">
-              <label>Name:</label>
-              <input name="name" value={studentInfo.name} onChange={handleInfoChange} required />
+              <label>First Name:</label>
+              <input name="firstName" value={studentInfo.firstName} onChange={handleInfoChange} required />
+            </div>
+            <div className="student-info-row">
+              <label>Second Name:</label>
+              <input name="secondName" value={studentInfo.secondName} onChange={handleInfoChange} required />
             </div>
             <div className="student-info-row">
               <label>Registration Number:</label>
-              <input name="regNo" value={studentInfo.regNo} onChange={handleInfoChange} required />
+              <input name="regNo" value={studentInfo.regNo} onChange={handleInfoChange} min="1" max="50" type="number" required />
             </div>
             <div className="student-info-row">
               <label>Center Number:</label>
-              <input name="centerNo" value={studentInfo.centerNo} onChange={handleInfoChange} required />
+              <input name="centerNo" value={studentInfo.centerNo} onChange={handleInfoChange} placeholder="e.g., 234 for Nigeria, 233 for Ghana" required />
             </div>
-            <button type="submit" className="btn-next">Start Quiz</button>
+            <div className="signature-section" style={{ marginTop: 10 }}>
+              <label>DIGITAL SIGNATURE:</label>
+              <div className="sig-wrapper">
+                <SignatureCanvas
+                  ref={loginSigCanvas}
+                  penColor='white'
+                  canvasProps={{ className: 'sigCanvas', height: 100 }}
+                  onEnd={() => setStudentInfo(prev => ({...prev, hasSigned: true}))}
+                />
+              </div>
+              <button type="button" className="btn-clear" onClick={() => { loginSigCanvas.current.clear(); setStudentInfo(prev => ({...prev, hasSigned: false})); }}>Clear Signature</button>
+            </div>
+            <button type="submit" className="btn-next" disabled={!studentInfo.hasSigned} style={{ opacity: studentInfo.hasSigned ? 1 : 0.5, cursor: studentInfo.hasSigned ? 'pointer' : 'not-allowed' }}>Start Quiz</button>
           </form>
         </div>
       </div>
@@ -356,7 +390,7 @@ function App({ onQuizStart }) {
       <div className="main-wrapper">
         <div className="glass-card">
           <h1>Quiz Results</h1>
-          <h3>Name: {studentInfo.name}</h3>
+          <h3>Name: {studentInfo.firstName} {studentInfo.secondName}</h3>
           <h3>Registration Number: {studentInfo.regNo}</h3>
           <h3>Center Number: {studentInfo.centerNo}</h3>
           <h2>Score: {score} / {allQuestions.length}</h2>
@@ -478,7 +512,10 @@ function App({ onQuizStart }) {
               fontWeight: currentStep === i + 1 ? 700 : 400
             }}
             aria-current={currentStep === i + 1 ? 'step' : undefined}
-            onClick={() => setCurrentStep(i + 1)}
+            onClick={() => {
+              setCurrentStep(i + 1);
+              if (i + 1 === TOTAL_STEPS) setTheoryPageIndex(0);
+            }}
           >
             Section {i + 1}
           </button>
@@ -501,13 +538,15 @@ function App({ onQuizStart }) {
         <div className="glass-card">
           <h2>Section {currentStep}</h2>
           <div className={`input-grid ${stepQuestions.length > 5 ? 'double' : ''}`}>
-            {stepQuestions.map((q, idx) => (
+            {(currentStep === TOTAL_STEPS ? stepQuestions.slice(theoryPageIndex, theoryPageIndex + 2) : stepQuestions).map((q, idx) => {
+              const displayIdx = currentStep === TOTAL_STEPS ? theoryPageIndex + idx : idx;
+              return (
               <div
                 key={q.id}
                 className="input-group"
                 ref={el => (questionRefs.current[q.id] = el)}
               >
-                <label>{idx + 1}. {q.question}</label>
+                <label>{displayIdx + 1}. {q.question}</label>
                 {q.type === 'objective' ? (
                   q.options.map(option => (
                     <label key={option} className="radio-option">
@@ -532,13 +571,21 @@ function App({ onQuizStart }) {
                   />
                 )}
               </div>
-            ))}
+            )})}
           </div>
           {/* Review button on last section */}
           {currentStep === TOTAL_STEPS && (
             <div className="nav-btns">
-              {currentStep > 1 && <button className="btn-back" onClick={() => setCurrentStep(currentStep - 1)}>Back</button>}
-              <button className="btn-next" onClick={() => setReviewMode(true)}>Review Answers</button>
+              {theoryPageIndex > 0 ? (
+                <button className="btn-back" onClick={() => setTheoryPageIndex(p => p - 2)}>Previous</button>
+              ) : (
+                currentStep > 1 && <button className="btn-back" onClick={() => setCurrentStep(currentStep - 1)}>Back</button>
+              )}
+              {theoryPageIndex + 2 < stepQuestions.length ? (
+                <button className="btn-next" onClick={() => setTheoryPageIndex(p => p + 2)}>Next</button>
+              ) : (
+                <button className="btn-next" onClick={() => setReviewMode(true)}>Review Answers</button>
+              )}
             </div>
           )}
           {currentStep < TOTAL_STEPS && (
@@ -568,7 +615,7 @@ function saveTeachers(teachers) {
 }
 
 // Admin Login Component
-function AdminLogin({ onAuthenticate }) {
+function AdminLogin({ onAuthenticate, onBack }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const ADMIN_PASSWORD = 'admin123'; // Master admin password
@@ -587,6 +634,12 @@ function AdminLogin({ onAuthenticate }) {
   return (
     <div className="main-wrapper">
       <div className="glass-card" style={{ maxWidth: 400 }}>
+        <div 
+          onClick={onBack} 
+          style={{ color: '#71717a', cursor: 'pointer', marginBottom: '16px', fontSize: '14px', display: 'inline-block' }}
+        >
+          ← Back to Landing Page
+        </div>
         <h2>Admin Login</h2>
         <p style={{ color: '#666', marginBottom: 16, fontSize: 14 }}>Master Administrator Account</p>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -986,7 +1039,7 @@ function ScoringModal({ studentResult, onClose, onSave }) {
           </p>
         </div>
         <p style={{ color: '#666', marginBottom: 20 }}>
-          <strong>Student:</strong> {studentResult.studentInfo.name} |
+          <strong>Student:</strong> {studentResult.studentInfo.name || `${studentResult.studentInfo.firstName} ${studentResult.studentInfo.secondName}`} |
           <strong style={{ marginLeft: 16 }}>Reg No:</strong> {studentResult.studentInfo.regNo}
         </p>
 
@@ -1401,7 +1454,7 @@ function AdminPanel({ onClose, currentTeacher }) {
                   const actualIndex = results.indexOf(res);
                   return (
                     <tr key={actualIndex} style={{ borderBottom: '1px solid #eee' }}>
-                      <td style={{ padding: 12 }}>{res.studentInfo?.name}</td>
+                      <td style={{ padding: 12 }}>{res.studentInfo?.name || `${res.studentInfo?.firstName} ${res.studentInfo?.secondName}`}</td>
                       <td style={{ padding: 12 }}>{res.studentInfo?.regNo}</td>
                       <td style={{ padding: 12, textAlign: 'center' }}>
                         {res.score}/{allQuestions.filter(q => q.type === 'objective').length}
@@ -1509,6 +1562,7 @@ function AppWithAdmin() {
     return (
       <AdminLogin
         onAuthenticate={() => setView('admin-panel')}
+        onBack={() => setView('menu')}
       />
     );
   }
