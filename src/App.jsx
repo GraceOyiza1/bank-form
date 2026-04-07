@@ -150,6 +150,14 @@ function App({ onQuizStart }) {
   const [timeLeft, setTimeLeft] = useState(3600); // 1 hour = 3600 seconds
   const [reviewMode, setReviewMode] = useState(false);
   const [theoryPageIndex, setTheoryPageIndex] = useState(0);
+  const [isDoubleView, setIsDoubleView] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  React.useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const loginSigCanvas = useRef();
   const sigCanvas = useRef();
   const timerRef = useRef();
@@ -536,9 +544,30 @@ function App({ onQuizStart }) {
           </div>
         </div>
         <div className="glass-card">
-          <h2>Section {currentStep}</h2>
-          <div className={`input-grid ${stepQuestions.length > 5 ? 'double' : ''}`}>
-            {(currentStep === TOTAL_STEPS ? stepQuestions.slice(theoryPageIndex, theoryPageIndex + 2) : stepQuestions).map((q, idx) => {
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2>Section {currentStep}</h2>
+            {currentStep === TOTAL_STEPS && !isMobile && (
+              <button 
+                onClick={() => {
+                  setIsDoubleView(!isDoubleView);
+                  setTheoryPageIndex(0);
+                }}
+                style={{
+                  padding: '6px 12px',
+                  background: 'rgba(255, 255, 255, 0.1)',
+                  color: '#fff',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  fontSize: 12
+                }}
+              >
+                {isDoubleView ? 'Switch to Single View' : 'Switch to 2-Column View'}
+              </button>
+            )}
+          </div>
+          <div className={`input-grid ${stepQuestions.length > 5 && (!isMobile && isDoubleView) ? 'double' : ''}`}>
+            {(currentStep === TOTAL_STEPS ? stepQuestions.slice(theoryPageIndex, theoryPageIndex + ((isDoubleView && !isMobile) ? 2 : 1)) : stepQuestions).map((q, idx) => {
               const displayIdx = currentStep === TOTAL_STEPS ? theoryPageIndex + idx : idx;
               return (
               <div
@@ -574,20 +603,23 @@ function App({ onQuizStart }) {
             )})}
           </div>
           {/* Review button on last section */}
-          {currentStep === TOTAL_STEPS && (
-            <div className="nav-btns">
-              {theoryPageIndex > 0 ? (
-                <button className="btn-back" onClick={() => setTheoryPageIndex(p => p - 2)}>Previous</button>
-              ) : (
-                currentStep > 1 && <button className="btn-back" onClick={() => setCurrentStep(currentStep - 1)}>Back</button>
-              )}
-              {theoryPageIndex + 2 < stepQuestions.length ? (
-                <button className="btn-next" onClick={() => setTheoryPageIndex(p => p + 2)}>Next</button>
-              ) : (
-                <button className="btn-next" onClick={() => setReviewMode(true)}>Review Answers</button>
-              )}
-            </div>
-          )}
+          {currentStep === TOTAL_STEPS && (() => {
+            const viewCount = (isDoubleView && !isMobile) ? 2 : 1;
+            return (
+              <div className="nav-btns">
+                {theoryPageIndex > 0 ? (
+                  <button className="btn-back" onClick={() => setTheoryPageIndex(p => p - viewCount)}>Previous</button>
+                ) : (
+                  currentStep > 1 && <button className="btn-back" onClick={() => setCurrentStep(currentStep - 1)}>Back</button>
+                )}
+                {theoryPageIndex + viewCount < stepQuestions.length ? (
+                  <button className="btn-next" onClick={() => setTheoryPageIndex(p => p + viewCount)}>Next</button>
+                ) : (
+                  <button className="btn-next" onClick={() => setReviewMode(true)}>Review Answers</button>
+                )}
+              </div>
+            );
+          })()}
           {currentStep < TOTAL_STEPS && (
             <div className="nav-btns">
               {currentStep > 1 && <button className="btn-back" onClick={() => setCurrentStep(currentStep - 1)}>Back</button>}
@@ -993,7 +1025,7 @@ function StudentResultsPortal({ onClose }) {
 }
 
 // Theory Question Scoring Modal
-function ScoringModal({ studentResult, onClose, onSave }) {
+function ScoringModal({ studentResult, onClose, onSave, isAdmin, onPublish }) {
   const [scores, setScores] = useState(() => {
     const saved = studentResult.theoryScores || {};
     return saved;
@@ -1033,22 +1065,22 @@ function ScoringModal({ studentResult, onClose, onSave }) {
     }}>
       <div className="glass-card" style={{ maxWidth: 700, maxHeight: '90vh', overflow: 'auto' }}>
         <h2>Score Theory Questions</h2>
-        <div style={{ padding: 12, background: '#e3f2fd', borderRadius: 6, marginBottom: 20, borderLeft: '4px solid #2196f3' }}>
-          <p style={{ margin: 0, fontSize: 13, color: '#0d47a1' }}>
-            <strong>📋 Workflow:</strong> After scoring, you must click <strong>"Publish"</strong> to make results visible to the student.
+        <div style={{ padding: 12, background: 'rgba(33, 150, 243, 0.1)', borderRadius: 6, marginBottom: 20, borderLeft: '4px solid #2196f3' }}>
+          <p style={{ margin: 0, fontSize: 13, color: '#90caf9' }}>
+            <strong>📋 Workflow:</strong> {isAdmin ? 'Review the teacher\'s scores and click "Approve & Publish" to complete.' : 'After scoring, the Admin will review your score before it is published.'}
           </p>
         </div>
-        <p style={{ color: '#666', marginBottom: 20 }}>
+        <p style={{ color: '#94a3b8', marginBottom: 20 }}>
           <strong>Student:</strong> {studentResult.studentInfo.name || `${studentResult.studentInfo.firstName} ${studentResult.studentInfo.secondName}`} |
           <strong style={{ marginLeft: 16 }}>Reg No:</strong> {studentResult.studentInfo.regNo}
         </p>
 
         {theoryQuestions.map((q, idx) => (
-          <div key={q.id} style={{ marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid #eee' }}>
+          <div key={q.id} style={{ marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
             <div style={{ marginBottom: 8 }}>
               <strong>Q{idx + 1}: {q.question}</strong>
             </div>
-            <div style={{ marginBottom: 8, padding: 8, background: '#f9f9f9', borderRadius: 4 }}>
+            <div style={{ marginBottom: 8, padding: 8, background: 'rgba(255, 255, 255, 0.05)', borderRadius: 4 }}>
               <div>
                 <strong>Student Answer:</strong>
                 <p style={{ margin: '8px 0 0 0', fontStyle: 'italic' }}>
@@ -1072,6 +1104,7 @@ function ScoringModal({ studentResult, onClose, onSave }) {
                   value={scores[q.id] || 0}
                   onChange={(e) => handleScoreChange(q.id, e.target.value)}
                   style={{ width: '100%' }}
+                  disabled={isAdmin}
                 />
               </div>
             </div>
@@ -1085,13 +1118,18 @@ function ScoringModal({ studentResult, onClose, onSave }) {
                 placeholder="Add feedback for the student..."
                 rows={3}
                 style={{ width: '100%', marginTop: 4 }}
+                disabled={isAdmin}
               />
             </div>
           </div>
         ))}
 
         <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
-          <button onClick={handleSave} className="btn-next">Save Scores</button>
+          {isAdmin ? (
+            <button onClick={onPublish} className="btn-next" style={{ background: '#4caf50' }}>Approve & Publish</button>
+          ) : (
+            <button onClick={handleSave} className="btn-next">Save Scores</button>
+          )}
           <button onClick={onClose} className="btn-back">Cancel</button>
         </div>
       </div>
@@ -1153,7 +1191,7 @@ function AdminManagementPanel({ onClose, currentTeacher }) {
         </div>
 
         {/* Add New Teacher Form */}
-        <div style={{ marginBottom: 32, padding: 20, background: '#f5f5f5', borderRadius: 8 }}>
+        <div style={{ marginBottom: 32, padding: 20, background: 'rgba(255, 255, 255, 0.05)', borderRadius: 8 }}>
           <h3 style={{ marginTop: 0 }}>Add New Teacher</h3>
           <form onSubmit={handleAddTeacher} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 12, alignItems: 'flex-end' }}>
             <div>
@@ -1193,21 +1231,21 @@ function AdminManagementPanel({ onClose, currentTeacher }) {
         {/* Teachers List */}
         <h3>Active Teachers ({teachers.length})</h3>
         {teachers.length === 0 ? (
-          <div style={{ padding: 20, textAlign: 'center', color: '#999' }}>No teachers yet</div>
+          <div style={{ padding: 20, textAlign: 'center', color: '#94a3b8' }}>No teachers yet</div>
         ) : (
           <div style={{ maxHeight: 400, overflow: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead style={{ background: '#f5f5f5', position: 'sticky', top: 0 }}>
+              <thead style={{ background: 'rgba(255, 255, 255, 0.1)', position: 'sticky', top: 0 }}>
                 <tr>
-                  <th style={{ padding: 12, textAlign: 'left', borderBottom: '2px solid #ddd' }}>Username</th>
-                  <th style={{ padding: 12, textAlign: 'left', borderBottom: '2px solid #ddd' }}>Password</th>
-                  <th style={{ padding: 12, textAlign: 'left', borderBottom: '2px solid #ddd' }}>Created</th>
-                  <th style={{ padding: 12, textAlign: 'center', borderBottom: '2px solid #ddd' }}>Action</th>
+                  <th style={{ padding: 12, textAlign: 'left', borderBottom: '2px solid rgba(255, 255, 255, 0.1)' }}>Username</th>
+                  <th style={{ padding: 12, textAlign: 'left', borderBottom: '2px solid rgba(255, 255, 255, 0.1)' }}>Password</th>
+                  <th style={{ padding: 12, textAlign: 'left', borderBottom: '2px solid rgba(255, 255, 255, 0.1)' }}>Created</th>
+                  <th style={{ padding: 12, textAlign: 'center', borderBottom: '2px solid rgba(255, 255, 255, 0.1)' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {teachers.map(t => (
-                  <tr key={t.id} style={{ borderBottom: '1px solid #eee' }}>
+                  <tr key={t.id} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
                     <td style={{ padding: 12, fontWeight: 600 }}>{t.username}</td>
                     <td style={{ padding: 12, fontFamily: 'monospace', fontSize: 12 }}>••••••••</td>
                     <td style={{ padding: 12, fontSize: 12 }}>
@@ -1345,27 +1383,27 @@ function AdminPanel({ onClose, currentTeacher }) {
 
         {/* Stats Section */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
-          <div style={{ padding: 16, background: '#e8f5e9', borderRadius: 8, textAlign: 'center' }}>
-            <div style={{ fontSize: 32, fontWeight: 'bold', color: '#2e7d32' }}>{results.length}</div>
-            <div style={{ fontSize: 12, color: '#1b5e20', marginTop: 4 }}>Total Submissions</div>
+          <div style={{ padding: 16, background: 'rgba(255, 255, 255, 0.05)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', textAlign: 'center' }}>
+            <div style={{ fontSize: 32, fontWeight: 'bold', color: '#4ade80' }}>{results.length}</div>
+            <div style={{ fontSize: 12, color: '#bbf7d0', marginTop: 4 }}>Total Submissions</div>
           </div>
-          <div style={{ padding: 16, background: '#fff3e0', borderRadius: 8, textAlign: 'center' }}>
-            <div style={{ fontSize: 32, fontWeight: 'bold', color: '#e65100' }}>
+          <div style={{ padding: 16, background: 'rgba(255, 255, 255, 0.05)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', textAlign: 'center' }}>
+            <div style={{ fontSize: 32, fontWeight: 'bold', color: '#fb923c' }}>
               {results.filter(r => isTheoryScoringPending(r)).length}
             </div>
-            <div style={{ fontSize: 12, color: '#bf360c', marginTop: 4 }}>Pending Scoring</div>
+            <div style={{ fontSize: 12, color: '#fed7aa', marginTop: 4 }}>Pending Scoring</div>
           </div>
-          <div style={{ padding: 16, background: '#e3f2fd', borderRadius: 8, textAlign: 'center' }}>
-            <div style={{ fontSize: 32, fontWeight: 'bold', color: '#1565c0' }}>
+          <div style={{ padding: 16, background: 'rgba(255, 255, 255, 0.05)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', textAlign: 'center' }}>
+            <div style={{ fontSize: 32, fontWeight: 'bold', color: '#60a5fa' }}>
               {results.filter(r => !isTheoryScoringPending(r) && !r.published).length}
             </div>
-            <div style={{ fontSize: 12, color: '#0d47a1', marginTop: 4 }}>Ready to Publish</div>
+            <div style={{ fontSize: 12, color: '#bfdbfe', marginTop: 4 }}>Ready to Publish</div>
           </div>
-          <div style={{ padding: 16, background: '#c8e6c9', borderRadius: 8, textAlign: 'center' }}>
-            <div style={{ fontSize: 32, fontWeight: 'bold', color: '#1b5e20' }}>
+          <div style={{ padding: 16, background: 'rgba(255, 255, 255, 0.05)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', textAlign: 'center' }}>
+            <div style={{ fontSize: 32, fontWeight: 'bold', color: '#4ade80' }}>
               {results.filter(r => r.published).length}
             </div>
-            <div style={{ fontSize: 12, color: '#1b5e20', marginTop: 4 }}>Published</div>
+            <div style={{ fontSize: 12, color: '#bbf7d0', marginTop: 4 }}>Published</div>
           </div>
         </div>
 
@@ -1375,9 +1413,9 @@ function AdminPanel({ onClose, currentTeacher }) {
             onClick={() => setFilter('all')}
             style={{
               padding: '8px 16px',
-              background: filter === 'all' ? '#4caf50' : '#f5f5f5',
-              color: filter === 'all' ? '#fff' : '#333',
-              border: 'none',
+              background: filter === 'all' ? '#4caf50' : 'transparent',
+              color: '#fff',
+              border: filter === 'all' ? 'none' : '1px solid rgba(255,255,255,0.2)',
               borderRadius: 4,
               cursor: 'pointer',
               fontSize: 12
@@ -1389,9 +1427,9 @@ function AdminPanel({ onClose, currentTeacher }) {
             onClick={() => setFilter('theory-pending')}
             style={{
               padding: '8px 16px',
-              background: filter === 'theory-pending' ? '#ff9800' : '#f5f5f5',
-              color: filter === 'theory-pending' ? '#fff' : '#333',
-              border: 'none',
+              background: filter === 'theory-pending' ? '#ff9800' : 'transparent',
+              color: '#fff',
+              border: filter === 'theory-pending' ? 'none' : '1px solid rgba(255,255,255,0.2)',
               borderRadius: 4,
               cursor: 'pointer',
               fontSize: 12
@@ -1403,9 +1441,9 @@ function AdminPanel({ onClose, currentTeacher }) {
             onClick={() => setFilter('theory-scored')}
             style={{
               padding: '8px 16px',
-              background: filter === 'theory-scored' ? '#2196f3' : '#f5f5f5',
-              color: filter === 'theory-scored' ? '#fff' : '#333',
-              border: 'none',
+              background: filter === 'theory-scored' ? '#2196f3' : 'transparent',
+              color: '#fff',
+              border: filter === 'theory-scored' ? 'none' : '1px solid rgba(255,255,255,0.2)',
               borderRadius: 4,
               cursor: 'pointer',
               fontSize: 12
@@ -1417,9 +1455,9 @@ function AdminPanel({ onClose, currentTeacher }) {
             onClick={() => setFilter('published')}
             style={{
               padding: '8px 16px',
-              background: filter === 'published' ? '#4caf50' : '#f5f5f5',
-              color: filter === 'published' ? '#fff' : '#333',
-              border: 'none',
+              background: filter === 'published' ? '#4caf50' : 'transparent',
+              color: '#fff',
+              border: filter === 'published' ? 'none' : '1px solid rgba(255,255,255,0.2)',
               borderRadius: 4,
               cursor: 'pointer',
               fontSize: 12
@@ -1435,15 +1473,15 @@ function AdminPanel({ onClose, currentTeacher }) {
             <div style={{ padding: 24, textAlign: 'center', color: '#999' }}>No results found.</div>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead style={{ background: '#f5f5f5', position: 'sticky', top: 0 }}>
+              <thead style={{ background: 'rgba(255, 255, 255, 0.1)', position: 'sticky', top: 0 }}>
                 <tr>
-                  <th style={{ padding: 12, textAlign: 'left', borderBottom: '2px solid #ddd' }}>Student</th>
-                  <th style={{ padding: 12, textAlign: 'left', borderBottom: '2px solid #ddd' }}>Reg No</th>
-                  <th style={{ padding: 12, textAlign: 'center', borderBottom: '2px solid #ddd' }}>Objective</th>
-                  <th style={{ padding: 12, textAlign: 'center', borderBottom: '2px solid #ddd' }}>Theory</th>
-                  <th style={{ padding: 12, textAlign: 'center', borderBottom: '2px solid #ddd' }}>Overall</th>
-                  <th style={{ padding: 12, textAlign: 'center', borderBottom: '2px solid #ddd' }}>Status</th>
-                  <th style={{ padding: 12, textAlign: 'center', borderBottom: '2px solid #ddd' }}>Action</th>
+                  <th style={{ padding: 12, textAlign: 'left', borderBottom: '2px solid rgba(255, 255, 255, 0.1)' }}>Student</th>
+                  <th style={{ padding: 12, textAlign: 'left', borderBottom: '2px solid rgba(255, 255, 255, 0.1)' }}>Reg No</th>
+                  <th style={{ padding: 12, textAlign: 'center', borderBottom: '2px solid rgba(255, 255, 255, 0.1)' }}>Objective</th>
+                  <th style={{ padding: 12, textAlign: 'center', borderBottom: '2px solid rgba(255, 255, 255, 0.1)' }}>Theory</th>
+                  <th style={{ padding: 12, textAlign: 'center', borderBottom: '2px solid rgba(255, 255, 255, 0.1)' }}>Overall</th>
+                  <th style={{ padding: 12, textAlign: 'center', borderBottom: '2px solid rgba(255, 255, 255, 0.1)' }}>Status</th>
+                  <th style={{ padding: 12, textAlign: 'center', borderBottom: '2px solid rgba(255, 255, 255, 0.1)' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -1453,7 +1491,7 @@ function AdminPanel({ onClose, currentTeacher }) {
                   const totalScore = calculateTotalScore(res);
                   const actualIndex = results.indexOf(res);
                   return (
-                    <tr key={actualIndex} style={{ borderBottom: '1px solid #eee' }}>
+                    <tr key={actualIndex} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
                       <td style={{ padding: 12 }}>{res.studentInfo?.name || `${res.studentInfo?.firstName} ${res.studentInfo?.secondName}`}</td>
                       <td style={{ padding: 12 }}>{res.studentInfo?.regNo}</td>
                       <td style={{ padding: 12, textAlign: 'center' }}>
@@ -1480,37 +1518,37 @@ function AdminPanel({ onClose, currentTeacher }) {
                       </td>
                       <td style={{ padding: 12, textAlign: 'center' }}>
                         <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
-                          {!isPending && !res.published && (
-                            <button
-                              onClick={() => publishResults(actualIndex)}
-                              style={{
-                                padding: '4px 8px',
-                                background: '#4caf50',
-                                color: '#fff',
-                                border: 'none',
-                                borderRadius: 4,
-                                cursor: 'pointer',
-                                fontSize: 11,
-                                fontWeight: 600
-                              }}
-                            >
-                              Publish
-                            </button>
+                          {!currentTeacher ? (
+                            <>
+                              {!isPending && !res.published && (
+                                <button
+                                  onClick={() => setSelectedResult(actualIndex)}
+                                  className="btn-next"
+                                  style={{ padding: '4px 8px', fontSize: 11, background: '#4caf50' }}
+                                >
+                                  Review
+                                </button>
+                              )}
+                              {res.published && <span style={{ fontSize: 11, color: '#94a3b8' }}>Locked</span>}
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => setSelectedResult(actualIndex)}
+                                disabled={res.published}
+                                className="btn-next"
+                                style={{
+                                  padding: '4px 8px',
+                                  fontSize: 11,
+                                  opacity: res.published ? 0.5 : 1,
+                                  cursor: res.published ? 'not-allowed' : 'pointer'
+                                }}
+                                title={res.published ? 'Results are published and locked' : 'Score theory questions'}
+                              >
+                                {res.published ? 'Locked' : 'Score'}
+                              </button>
+                            </>
                           )}
-                          <button
-                            onClick={() => setSelectedResult(actualIndex)}
-                            disabled={res.published}
-                            className="btn-next"
-                            style={{
-                              padding: '4px 8px',
-                              fontSize: 11,
-                              opacity: res.published ? 0.5 : 1,
-                              cursor: res.published ? 'not-allowed' : 'pointer'
-                            }}
-                            title={res.published ? 'Results are published and locked' : 'Score theory questions'}
-                          >
-                            {res.published ? 'Locked' : 'Score'}
-                          </button>
                         </div>
                       </td>
                     </tr>
@@ -1530,6 +1568,11 @@ function AdminPanel({ onClose, currentTeacher }) {
             studentResult={results[selectedResult]}
             onClose={() => setSelectedResult(null)}
             onSave={(scores) => saveTheoryScores(selectedResult, scores)}
+            isAdmin={!currentTeacher}
+            onPublish={() => {
+              publishResults(selectedResult);
+              setSelectedResult(null);
+            }}
           />
         )
       }
