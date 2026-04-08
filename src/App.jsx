@@ -280,12 +280,19 @@ function App({ onQuizStart }) {
 
   const handleInfoChange = (e) => {
     const { name, value } = e.target;
-    setStudentInfo((prev) => ({ ...prev, [name]: value }));
+    if (name === 'regNo') {
+      // Auto-generate center number: 234 + zero-padded reg number
+      const padded = value.padStart(3, '0');
+      const autoCenter = value.trim() !== '' ? `234${padded}` : '';
+      setStudentInfo(prev => ({ ...prev, regNo: value, centerNo: autoCenter }));
+    } else {
+      setStudentInfo(prev => ({ ...prev, [name]: value }));
+    }
   };
 
   const handleInfoSubmit = (e) => {
     e.preventDefault();
-    if (!studentInfo.firstName.trim() || !studentInfo.secondName.trim() || !studentInfo.regNo.trim() || !studentInfo.centerNo.trim()) {
+    if (!studentInfo.firstName.trim() || !studentInfo.secondName.trim() || !studentInfo.regNo.trim()) {
       alert('Please fill in all student information fields.');
       return;
     }
@@ -365,12 +372,21 @@ function App({ onQuizStart }) {
       randomizedQuestions: questions,
     };
     localStorage.setItem("quizResult", JSON.stringify(result));
-    // Store in allQuizResults array
+
+    // Store in allQuizResults array, using centerNo as unique key to prevent duplicates
     let allResults = [];
     try {
       allResults = JSON.parse(localStorage.getItem("allQuizResults")) || [];
     } catch (e) { allResults = []; }
-    allResults.push(result);
+
+    // Replace existing result for this student (same centerNo) or add new
+    const uniqueKey = studentInfo.centerNo;
+    const existingIndex = allResults.findIndex(r => r.studentInfo?.centerNo === uniqueKey);
+    if (existingIndex >= 0) {
+      allResults[existingIndex] = result; // Overwrite — same student re-submitting
+    } else {
+      allResults.push(result);
+    }
     localStorage.setItem("allQuizResults", JSON.stringify(allResults));
 
     // 7. Clear quiz session (quiz is done)
@@ -397,12 +413,27 @@ function App({ onQuizStart }) {
               <input name="secondName" value={studentInfo.secondName} onChange={handleInfoChange} required />
             </div>
             <div className="student-info-row">
-              <label>Registration Number:</label>
-              <input name="regNo" value={studentInfo.regNo} onChange={handleInfoChange} min="1" max="50" type="number" required />
+              <label>Registration Number (001–050):</label>
+              <input
+                name="regNo"
+                value={studentInfo.regNo}
+                onChange={handleInfoChange}
+                min="1"
+                max="50"
+                type="number"
+                placeholder="e.g., 005"
+                required
+              />
             </div>
             <div className="student-info-row">
-              <label>Center Number:</label>
-              <input name="centerNo" value={studentInfo.centerNo} onChange={handleInfoChange} placeholder="e.g., 234 for Nigeria, 233 for Ghana" required />
+              <label>Center Number <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 400 }}>(auto-generated)</span>:</label>
+              <input
+                name="centerNo"
+                value={studentInfo.centerNo}
+                readOnly
+                placeholder="Auto-filled when you enter Reg No"
+                style={{ opacity: 0.65, cursor: 'not-allowed', background: 'rgba(255,255,255,0.04)' }}
+              />
             </div>
             <div className="signature-section" style={{ marginTop: 10 }}>
               <label>DIGITAL SIGNATURE:</label>
