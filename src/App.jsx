@@ -1457,45 +1457,39 @@ function AdminPanel({ onClose, currentTeacher }) {
   return (
     <div className="main-wrapper">
       <div className="glass-card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-          <h2>{currentTeacher ? 'Teacher Dashboard' : 'Admin Dashboard'}</h2>
-          <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+          <h2 style={{ margin: 0 }}>{currentTeacher ? 'Teacher Dashboard' : 'Admin Dashboard'}</h2>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {!currentTeacher && (
               <button
                 onClick={() => setManagingTeachers(true)}
                 className="btn-next"
-                style={{ padding: '8px 16px' }}
+                style={{ padding: '8px 16px', fontSize: 13 }}
               >
                 Manage Teachers
               </button>
             )}
-            <button onClick={onClose} className="btn-back">Exit</button>
+            <button onClick={onClose} className="btn-back" style={{ padding: '8px 16px', fontSize: 13 }}>Exit</button>
           </div>
         </div>
 
         {/* Stats Section */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
-          <div style={{ padding: 16, background: 'rgba(255, 255, 255, 0.05)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', textAlign: 'center' }}>
-            <div style={{ fontSize: 32, fontWeight: 'bold', color: '#4ade80' }}>{results.length}</div>
-            <div style={{ fontSize: 12, color: '#bbf7d0', marginTop: 4 }}>Total Submissions</div>
+        <div className="stats-grid">
+          <div style={{ padding: 16, background: 'rgba(255,255,255,0.05)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', textAlign: 'center' }}>
+            <div style={{ fontSize: 28, fontWeight: 'bold', color: '#4ade80' }}>{results.length}</div>
+            <div style={{ fontSize: 11, color: '#bbf7d0', marginTop: 4 }}>Total Submissions</div>
           </div>
-          <div style={{ padding: 16, background: 'rgba(255, 255, 255, 0.05)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', textAlign: 'center' }}>
-            <div style={{ fontSize: 32, fontWeight: 'bold', color: '#fb923c' }}>
-              {results.filter(r => isTheoryScoringPending(r)).length}
-            </div>
-            <div style={{ fontSize: 12, color: '#fed7aa', marginTop: 4 }}>Pending Scoring</div>
+          <div style={{ padding: 16, background: 'rgba(255,255,255,0.05)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', textAlign: 'center' }}>
+            <div style={{ fontSize: 28, fontWeight: 'bold', color: '#fb923c' }}>{results.filter(r => isTheoryScoringPending(r)).length}</div>
+            <div style={{ fontSize: 11, color: '#fed7aa', marginTop: 4 }}>Pending Scoring</div>
           </div>
-          <div style={{ padding: 16, background: 'rgba(255, 255, 255, 0.05)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', textAlign: 'center' }}>
-            <div style={{ fontSize: 32, fontWeight: 'bold', color: '#60a5fa' }}>
-              {results.filter(r => !isTheoryScoringPending(r) && !r.published).length}
-            </div>
-            <div style={{ fontSize: 12, color: '#bfdbfe', marginTop: 4 }}>Ready to Publish</div>
+          <div style={{ padding: 16, background: 'rgba(255,255,255,0.05)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', textAlign: 'center' }}>
+            <div style={{ fontSize: 28, fontWeight: 'bold', color: '#60a5fa' }}>{results.filter(r => !isTheoryScoringPending(r) && !r.published).length}</div>
+            <div style={{ fontSize: 11, color: '#bfdbfe', marginTop: 4 }}>Ready to Publish</div>
           </div>
-          <div style={{ padding: 16, background: 'rgba(255, 255, 255, 0.05)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', textAlign: 'center' }}>
-            <div style={{ fontSize: 32, fontWeight: 'bold', color: '#4ade80' }}>
-              {results.filter(r => r.published).length}
-            </div>
-            <div style={{ fontSize: 12, color: '#bbf7d0', marginTop: 4 }}>Published</div>
+          <div style={{ padding: 16, background: 'rgba(255,255,255,0.05)', borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', textAlign: 'center' }}>
+            <div style={{ fontSize: 28, fontWeight: 'bold', color: '#4ade80' }}>{results.filter(r => r.published).length}</div>
+            <div style={{ fontSize: 11, color: '#bbf7d0', marginTop: 4 }}>Published</div>
           </div>
         </div>
 
