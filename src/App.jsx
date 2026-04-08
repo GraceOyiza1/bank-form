@@ -522,7 +522,7 @@ function App({ onQuizStart }) {
             aria-current={currentStep === i + 1 ? 'step' : undefined}
             onClick={() => {
               setCurrentStep(i + 1);
-              if (i + 1 === TOTAL_STEPS) setTheoryPageIndex(0);
+              setTheoryPageIndex(0);
             }}
           >
             Section {i + 1}
@@ -546,7 +546,7 @@ function App({ onQuizStart }) {
         <div className="glass-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h2>Section {currentStep}</h2>
-            {currentStep === TOTAL_STEPS && !isMobile && (
+            {!isMobile && (
               <button 
                 onClick={() => {
                   setIsDoubleView(!isDoubleView);
@@ -566,9 +566,12 @@ function App({ onQuizStart }) {
               </button>
             )}
           </div>
-          <div className={`input-grid ${stepQuestions.length > 5 && (!isMobile && isDoubleView) ? 'double' : ''}`}>
-            {(currentStep === TOTAL_STEPS ? stepQuestions.slice(theoryPageIndex, theoryPageIndex + ((isDoubleView && !isMobile) ? 2 : 1)) : stepQuestions).map((q, idx) => {
-              const displayIdx = currentStep === TOTAL_STEPS ? theoryPageIndex + idx : idx;
+          <div className={`input-grid ${(!isMobile && isDoubleView) ? 'double' : ''}`}>
+            {(() => {
+              const viewCount = (isDoubleView && !isMobile) ? 2 : 1;
+              return stepQuestions.slice(theoryPageIndex, theoryPageIndex + viewCount);
+            })().map((q, idx) => {
+              const displayIdx = theoryPageIndex + idx;
               return (
               <div
                 key={q.id}
@@ -602,30 +605,30 @@ function App({ onQuizStart }) {
               </div>
             )})}
           </div>
-          {/* Review button on last section */}
-          {currentStep === TOTAL_STEPS && (() => {
+          {/* Navigation for all sections */}
+          {(() => {
             const viewCount = (isDoubleView && !isMobile) ? 2 : 1;
+            const isLastPage = theoryPageIndex + viewCount >= stepQuestions.length;
+            const isFirstPage = theoryPageIndex === 0;
             return (
               <div className="nav-btns">
-                {theoryPageIndex > 0 ? (
+                {/* Back button: go to prev page or prev section */}
+                {!isFirstPage ? (
                   <button className="btn-back" onClick={() => setTheoryPageIndex(p => p - viewCount)}>Previous</button>
                 ) : (
-                  currentStep > 1 && <button className="btn-back" onClick={() => setCurrentStep(currentStep - 1)}>Back</button>
+                  currentStep > 1 && <button className="btn-back" onClick={() => { setCurrentStep(currentStep - 1); setTheoryPageIndex(0); }}>Back</button>
                 )}
-                {theoryPageIndex + viewCount < stepQuestions.length ? (
+                {/* Next: paginate within section, or advance section, or review */}
+                {!isLastPage ? (
                   <button className="btn-next" onClick={() => setTheoryPageIndex(p => p + viewCount)}>Next</button>
+                ) : currentStep < TOTAL_STEPS ? (
+                  <button className="btn-next" onClick={() => { setCurrentStep(currentStep + 1); setTheoryPageIndex(0); }}>Next Section</button>
                 ) : (
                   <button className="btn-next" onClick={() => setReviewMode(true)}>Review Answers</button>
                 )}
               </div>
             );
           })()}
-          {currentStep < TOTAL_STEPS && (
-            <div className="nav-btns">
-              {currentStep > 1 && <button className="btn-back" onClick={() => setCurrentStep(currentStep - 1)}>Back</button>}
-              <button className="btn-next" onClick={() => setCurrentStep(currentStep + 1)}>Next Section</button>
-            </div>
-          )}
         </div>
       </div>
     </div>
