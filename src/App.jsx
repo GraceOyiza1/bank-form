@@ -139,17 +139,22 @@ const TOTAL_STEPS = 11;
 
 
 function App({ onQuizStart }) {
+  // --- Restore quiz session from localStorage on mount ---
+  const savedSession = (() => {
+    try { return JSON.parse(localStorage.getItem('quizSession')) || {}; } catch { return {}; }
+  })();
+
   // All state hooks must come first
-  const [randomizedQuestions, setRandomizedQuestions] = useState([]);
-  const [answers, setAnswers] = useState({});
+  const [randomizedQuestions, setRandomizedQuestions] = useState(savedSession.randomizedQuestions || []);
+  const [answers, setAnswers] = useState(savedSession.answers || {});
   const [submitted, setSubmitted] = useState(false);
   const [score, setScore] = useState(0);
-  const [currentStep, setCurrentStep] = useState(1);
-  const [studentInfo, setStudentInfo] = useState({ firstName: '', secondName: '', regNo: '', centerNo: '', hasSigned: false });
-  const [infoSubmitted, setInfoSubmitted] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(3600); // 1 hour = 3600 seconds
+  const [currentStep, setCurrentStep] = useState(savedSession.currentStep || 1);
+  const [studentInfo, setStudentInfo] = useState(savedSession.studentInfo || { firstName: '', secondName: '', regNo: '', centerNo: '', hasSigned: false });
+  const [infoSubmitted, setInfoSubmitted] = useState(savedSession.infoSubmitted || false);
+  const [timeLeft, setTimeLeft] = useState(savedSession.timeLeft || 3600);
   const [reviewMode, setReviewMode] = useState(false);
-  const [theoryPageIndex, setTheoryPageIndex] = useState(0);
+  const [theoryPageIndex, setTheoryPageIndex] = useState(savedSession.theoryPageIndex || 0);
   const [isDoubleView, setIsDoubleView] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
@@ -158,6 +163,28 @@ function App({ onQuizStart }) {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Notify parent that quiz is active (restore case)
+  React.useEffect(() => {
+    if (infoSubmitted && onQuizStart) onQuizStart();
+    // eslint-disable-next-line
+  }, []);
+
+  // Persist quiz session to localStorage whenever key state changes
+  React.useEffect(() => {
+    if (!infoSubmitted) return; // Don't save until the student has started
+    const session = {
+      randomizedQuestions,
+      answers,
+      currentStep,
+      theoryPageIndex,
+      studentInfo,
+      infoSubmitted,
+      timeLeft
+    };
+    localStorage.setItem('quizSession', JSON.stringify(session));
+  }, [answers, currentStep, theoryPageIndex, timeLeft, infoSubmitted]);
+
   const loginSigCanvas = useRef();
   const sigCanvas = useRef();
   const timerRef = useRef();
@@ -346,7 +373,10 @@ function App({ onQuizStart }) {
     allResults.push(result);
     localStorage.setItem("allQuizResults", JSON.stringify(allResults));
 
-    // 7. Show result
+    // 7. Clear quiz session (quiz is done)
+    localStorage.removeItem('quizSession');
+
+    // 8. Show result
     setSubmitted(true);
   };
 
@@ -1612,14 +1642,28 @@ function AdminPanel({ onClose, currentTeacher }) {
 }
 
 function AppWithAdmin() {
-  const [view, setView] = useState('quiz'); // 'quiz', 'menu', 'admin-login', 'admin-panel', 'teacher-login', 'teacher-panel', 'student-results'
-  const [currentTeacher, setCurrentTeacher] = useState(null);
-  const [quizActive, setQuizActive] = useState(false);
+  // Restore persisted view + teacher on mount
+  const savedAppState = (() => {
+    try { return JSON.parse(localStorage.getItem('appSession')) || {}; } catch { return {}; }
+  })();
 
-  const showMenu = () => {
-    setView('menu');
+  const [view, setView] = useState(savedAppState.view || 'quiz');
+  const [currentTeacher, setCurrentTeacher] = useState(savedAppState.currentTeacher || null);
+  const [quizActive, setQuizActive] = useState(savedAppState.view === 'quiz' && !!localStorage.getItem('quizSession'));
+
+  // Sync view + teacher to localStorage on every change
+  React.useEffect(() => {
+    localStorage.setItem('appSession', JSON.stringify({ view, currentTeacher }));
+  }, [view, currentTeacher]);
+
+  // Clear session on logout / exit
+  const logout = (nextView = 'menu') => {
+    localStorage.removeItem('appSession');
     setCurrentTeacher(null);
+    setView(nextView);
   };
+
+  const showMenu = () => logout('menu');
 
   if (view === 'menu') {
     return (
@@ -1657,7 +1701,7 @@ function AppWithAdmin() {
           setCurrentTeacher(teacher);
           setView('teacher-panel');
         }}
-        onBackToMenu={() => setView('menu')}
+        onBackToMenu={() => logout('menu')}
       />
     );
   }
@@ -1686,7 +1730,10 @@ function AppWithAdmin() {
           Access Portal
         </button>
       )}
-      <App onQuizStart={() => setQuizActive(true)} />
+      <App onQuizStart={() => {
+        setQuizActive(true);
+        localStorage.setItem('appSession', JSON.stringify({ view: 'quiz', currentTeacher: null }));
+      }} />
     </>
   );
 }
