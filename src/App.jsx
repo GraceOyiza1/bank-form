@@ -649,6 +649,26 @@ function saveTeachers(teachers) {
   localStorage.setItem("teachers", JSON.stringify(teachers));
 }
 
+// Helper: Always read fresh results from localStorage
+function getStoredResults() {
+  try {
+    return JSON.parse(localStorage.getItem("allQuizResults")) || [];
+  } catch {
+    return [];
+  }
+}
+
+// One-time: ensure the results array has capacity for 50 students (slots 001-050).
+// This does NOT overwrite existing data — it only initialises localStorage if it
+// has never been touched before.
+function initStudentCapacity() {
+  const existing = getStoredResults();
+  if (existing.length === 0) {
+    // Leave empty — real entries will be pushed when students submit.
+    // The capacity label (001-050) is enforced by the reg-number validation.
+  }
+}
+
 // Admin Login Component
 function AdminLogin({ onAuthenticate, onBack }) {
   const [password, setPassword] = useState('');
@@ -877,11 +897,14 @@ function StudentResultsPortal({ onClose }) {
       published: r.published
     })));
 
-    const found = currentResults.find(
-      r => r.studentInfo?.name?.trim().toLowerCase() === nameInput.toLowerCase() &&
-        r.studentInfo?.regNo?.trim().toLowerCase() === regInput.toLowerCase() &&
-        (r.isApproved === true || r.published === true)
-    );
+    const found = currentResults.find(r => {
+      const storedName = r.studentInfo?.name
+        ? r.studentInfo.name.trim().toLowerCase()
+        : `${r.studentInfo?.firstName || ''} ${r.studentInfo?.secondName || ''}`.trim().toLowerCase();
+      const storedReg = r.studentInfo?.regNo?.toString().trim().toLowerCase();
+      const isPublished = r.isApproved === true || r.published === true;
+      return storedName === nameInput.toLowerCase() && storedReg === regInput.toLowerCase() && isPublished;
+    });
 
     if (found) {
       console.log('Result found:', found);
@@ -1148,6 +1171,11 @@ function AdminManagementPanel({ onClose, currentTeacher }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  // Always sync from localStorage when the panel mounts
+  React.useEffect(() => {
+    setTeachers(getTeachers());
+  }, []);
+
   const handleAddTeacher = (e) => {
     e.preventDefault();
     if (!newUsername.trim() || !newPassword.trim()) {
@@ -1293,39 +1321,39 @@ function AdminPanel({ onClose, currentTeacher }) {
   }, []);
 
   const loadResults = () => {
-    try {
-      setResults(JSON.parse(localStorage.getItem("allQuizResults")) || []);
-    } catch {
-      setResults([]);
-    }
+    setResults(getStoredResults());
   };
 
   const saveTheoryScores = (resultIndex, scores) => {
-    const updated = [...results];
-    updated[resultIndex] = {
-      ...updated[resultIndex],
+    // Always read the freshest data from localStorage before mutating
+    const fresh = getStoredResults();
+    fresh[resultIndex] = {
+      ...fresh[resultIndex],
       theoryScores: scores.theoryScores,
-      theoryComments: scores.theoryComments
+      theoryComments: scores.theoryComments,
+      scoredAt: new Date().toISOString(),
+      scoredBy: currentTeacher?.username || 'teacher'
     };
-    setResults(updated);
-    localStorage.setItem("allQuizResults", JSON.stringify(updated));
+    localStorage.setItem("allQuizResults", JSON.stringify(fresh));
+    setResults([...fresh]);
     setSelectedResult(null);
   };
 
   const publishResults = (resultIndex) => {
-    const updated = [...results];
-    const studentName = updated[resultIndex].studentInfo.name;
-    updated[resultIndex] = {
-      ...updated[resultIndex],
+    // Always read fresh from localStorage to prevent stale-state overwrite
+    const fresh = getStoredResults();
+    const studentInfo = fresh[resultIndex]?.studentInfo || {};
+    const studentName = studentInfo.name || `${studentInfo.firstName || ''} ${studentInfo.secondName || ''}`.trim();
+    fresh[resultIndex] = {
+      ...fresh[resultIndex],
       published: true,
       isApproved: true,
       publishedAt: new Date().toISOString(),
-      publishedBy: currentTeacher?.username || 'system'
+      publishedBy: currentTeacher?.username || 'admin'
     };
-    setResults(updated);
-    localStorage.setItem("allQuizResults", JSON.stringify(updated));
+    localStorage.setItem("allQuizResults", JSON.stringify(fresh));
+    setResults([...fresh]);
 
-    // Show confirmation
     alert(
       `✓ Results Published!\n\n` +
       `Student: ${studentName}\n` +
